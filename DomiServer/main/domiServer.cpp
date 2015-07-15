@@ -47,41 +47,46 @@ bool CDomiServer::initialize(uint16 uServerID)
 bool CDomiServer::startServices()
 {
 	CServerRoot::startServices();
-	m_tcpServer.StartServer();
+	m_netServer.StartServer();
 
-	CTimer::GetSingleton().addTimer(test, 100, 50);
+	CTimer::GetSingleton().addTimer(test, 100, 10);
 	return true;
 }
 
 // timer工作线程，逻辑在这里处理
 void CDomiServer::timerProcess()
 {
-	//CLog::print("CDomiServer::timerProcess()");
-	/*
+	static int test = 0;
+	// 处理消息
 	_stNetMessage* pMsg = nullptr;
-	server.m_clMessageQueue.swap_queue();
-	while (pMsg = server.m_clMessageQueue.front())
+	m_netServer.m_clMessageQueue.swap_queue();
+	while (pMsg = m_netServer.m_clMessageQueue.front())
 	{
 		if (pMsg)
 		{
-			printf("------------\n");
-			CTcpConnection* client = server.getClient(pMsg->_context, pMsg->_apply_key);
+			CTcpConnection* client = m_netServer.getClient(pMsg->_context, pMsg->_apply_key);
 			if (client)
 			{
-				client->disconnect();
-				//client->setApplyLock(false);
+				//client->disconnect();
+				//printf("------------> %s\n",pMsg->m_buffer);
+				//std::cout << pMsg->_context << std::endl;
+				/*++test;
+				if (test>=10)
+				{
+					client->disconnect();
+				}*/
+				client->setApplyLock(false);
 			}
 		}
-		server.m_clMessageQueue.pop();
+		m_netServer.m_clMessageQueue.pop();
 	}
-	*/
 }
 
 // 关闭server
 void CDomiServer::stopServices()
 {
 	CTimer::GetSingleton().stopTimer();
-	m_tcpServer.StopServer();
+	m_netServer.StopServer();
 
 	CLog::shutdown();
 }

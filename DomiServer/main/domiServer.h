@@ -8,7 +8,7 @@
 
 #include "common/singleton/singleton.h"
 #include "common/serverroot/serverRoot.h"
-#include "network/game_server.h"
+#include "logic/logicnet/net_server.h"
 
 class CDomiServer : public Singleton<CDomiServer>
 				  , public CServerRoot
@@ -27,5 +27,5 @@ public:
 	void CDomiServer::denyServices();				// 拒绝server
 
 public:
-	GameServer m_tcpServer;
+	CNetServer m_netServer;		// 网络连接服务端
 };

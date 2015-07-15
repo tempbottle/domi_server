@@ -27,6 +27,7 @@
 #include <errno.h>	//包含此文件就会设置errno变量【int geterror()】
 #include "tcp_thread.h"
 #include "libevent.h"
+#include "common/thread/csLocker.h"
 
 #define MaxBuffLen 1024*10	// 4k
 
@@ -43,7 +44,6 @@ struct PacketHead
 
 //////////////////////////////////////////////////////////////////////////
 class CTcpServer;
-class CTcpThread;
 class CTcpContext		//状态有【链接中|已链接|断开中】
 {
 public:
@@ -56,14 +56,16 @@ public:
 private:
 	void initialize();	// 初始化
 	void initContext(CTcpServer* _network, CTcpThread*_thread, evutil_socket_t fd, uint32 id = 0);
+	bool isInLoopThread();
 
 public:
 	bool	send(const char* pBuffer,int32 nSize);
 	void	disconnect();
+	bool	processPacket();
+
 	ulong	remote_address();		// 远程地址
 	const char*	remote_ip();		// 远程地址的ip
 
-public:
 	inline int getPendingLen() { return m_inbufLen - m_readBegin; }	// 剩余未处理的字节数
 	inline int getFreeLen()	{ return MaxBuffLen - m_inbufLen; }		// 可以apend的长度
 

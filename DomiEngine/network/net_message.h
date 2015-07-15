@@ -25,13 +25,14 @@ struct _stNetMessage
 {
 	uint32		 _apply_key;						//引用key
 	CTcpContext* _context;							//应用上下文
-	uint16		 _size;								//数据大小
+	uint16		 m_size;							//数据大小
 	MessagePack  m_proto;							//protobuf
+	char		 m_buffer[MaxBuffLen];				//数据内容
 
 	_stNetMessage()
 		:_apply_key(0)
 		,_context(nullptr)
-		, _size(0)
+		, m_size(0)
 	{
 		//printf("MessagePack = %d \n", sizeof(MessagePack));
 		//m_proto.Clear();
@@ -43,6 +44,8 @@ struct _stNetMessage
 		_apply_key = apply_key;
         
 		//m_proto.SerializeToArray(buffer, size);
+		memcpy(m_buffer,buffer,size);
+		m_size = size;
 		//printf("%s\n", buffer + 6);
 		//printf("context = %d\n", context->m_ContextId);
 	}

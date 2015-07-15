@@ -7,29 +7,31 @@
 *********************************************************************/
 
 #pragma once
+#include <vector>
+#include <functional>
 #include "common/thread/thread.h"
-#include "common/thread/condEvent.h"
-#include "libevent.h"
+#include "network/libevent.h"
 
 class CTcpServer;
 class CTcpThread : public CThread
 {
 public:
-	uint64		m_count;			//被引用次数
-	CCondEvent*	m_exit;				//退事件,条件变量
-	CTcpServer* m_clTcpServer;		//归属对像
-	event_base* m_base;				//根基事件
+	CTcpThread();
+	~CTcpThread();
 
 public:
 	inline void	enter_thread() { m_count++; }
 	inline void	exit_thread	() { if(m_count) m_count--;}
 
+	bool initialize(CTcpServer* pTcpServer);		// 初始化
+
+	static void on_timeout(evutil_socket_t fd, short events, void * arg);
+
 public:
-	CTcpThread()
-	{
-		m_count	= 0;
-		m_exit	= NULL;
-		m_clTcpServer = NULL;
-		m_base	= NULL;
-	}
+	uint64		 m_count;			// 被引用次数
+	CTcpServer*	 m_clTcpServer;		// 归属对像
+	event_base*	 m_base;			// 根基事件
+	bufferevent* m_pbufferevent[2];	// 线程同步
+	struct event eTimeout;
 };
+

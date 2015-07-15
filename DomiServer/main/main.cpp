@@ -9,9 +9,6 @@
 #include <iostream>
 #include "domiServer.h"
 
-#pragma comment (lib,"ws2_32.lib")
-#pragma comment (lib,"wsock32.lib")
-
 int main(int argc, char* argv[])
 {
 	if (!CDomiServer::GetSingleton().initialize(7))

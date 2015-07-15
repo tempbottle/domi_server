@@ -31,8 +31,10 @@ private:
 
 public:
 	inline void SetWorkThreadNum(uint32 num) { m_unWorkThreadNum = num; }
+	inline CMutex& GetContextMapLock()  { return m_mapContext.getLock(); }
 
 	void SetTimeout(uint64 _timeout_connect,uint64 _timeout_read,uint64 _timeout_write);
+	bool StarLister();
 	bool StartServer();
 	bool StopServer();
 	void CloseContext(CTcpContext *pContext);
@@ -70,9 +72,8 @@ public:
 	VECTOR_THREAD		m_vecWorkThread;	//工作线程池
 	uint32				m_unWorkThreadNum;	//工作线程数量
 	uint32				nCurrentWorker;		//线程负载均衡
-	CCondEvent			m_clExitEvent;		//退出循环事件,线程同步条件变量
 
-	// 
+	// context
 	MAP_CONTEXT			m_mapContext;		//客户端上下文集合
 	uint16				m_send_buffer_max;	//最大发送缓冲区数量
 	timeval				m_timeout;
@@ -80,9 +81,7 @@ public:
 	uint64				m_timeout_read;		//读取超时时间(秒)
 	uint64				m_timeout_write;	//写入超时时间(秒)
 
-	std::map<CTcpContext*, CTcpConnection*> m_mapContent;	// 客户端连接
 	CMessageQueue		m_clMessageQueue;	// 消息队列
-	CMutex				m_Mutex;			// 互斥锁,用来锁context集合
 
 	uint32 m_nextContextId;
 };

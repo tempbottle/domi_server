@@ -4,8 +4,10 @@
 文件作者:        Domi
 *********************************************************************/
 
+#include <functional>
 #include "tcp_context.h"
 #include "tcp_server.h"
+#include "common/log/log.h"
 
 CTcpContext::CTcpContext()
 {
@@ -21,6 +23,7 @@ void CTcpContext::initialize()
 	m_readBegin = 0;
 	m_clOwnerThread = nullptr;
 	m_clTcpServer = nullptr;
+	_connected = false;
 
 	memset(m_inbuf, 0, MaxBuffLen);
 }
@@ -32,6 +35,8 @@ void CTcpContext::initContext(CTcpServer* _network, CTcpThread*_thread, evutil_s
 	m_clOwnerThread = _thread;
 	m_fd = fd;
 	m_ContextId = id;
+
+	_connected = true;
 }
 
 bool CTcpContext::send(const char* pBuffer,int32 nSize)
@@ -41,11 +46,21 @@ bool CTcpContext::send(const char* pBuffer,int32 nSize)
 
 void CTcpContext::disconnect()
 {
-	printf("context 断开连接! \n");
 	if (m_clTcpServer)
 	{
 		m_clTcpServer->CloseContext(this);
-	}	
+	}
+}
+
+bool CTcpContext::processPacket()
+{
+	if (!_connected)	// 没有链接完成
+		return false;
+
+	if (!m_clTcpServer)
+		return false;
+
+	return m_clTcpServer->OnProcessPacket(this);
 }
 
 // 远程地址

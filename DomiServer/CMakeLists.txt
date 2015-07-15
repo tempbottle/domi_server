@@ -1,5 +1,6 @@
 #头文件目录
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/DomiEngine
+					${CMAKE_SOURCE_DIR}/DomiServer
 					${CMAKE_SOURCE_DIR}/Dependence/include/libevent
 					${CMAKE_SOURCE_DIR}/Dependence/include/libevent/include
 					${CMAKE_SOURCE_DIR}/Dependence/include/libevent/compat
@@ -7,7 +8,7 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/DomiEngine
 					${CMAKE_SOURCE_DIR}/Dependence/include
 )
 
-file(GLOB_RECURSE main_SRCS *.h *.cpp)
+#message("------------------------- ${CMAKE_SOURCE_DIR} -------------------------")
 
 IF(WIN32)
     IF(MSVC)
@@ -28,16 +29,31 @@ ELSEIF(UNIX)
     SET(LIBRARY_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/../Output/bin/${CMAKE_BUILD_TYPE}/)
 ENDIF()
 
-file (GLOB_RECURSE logic_src "logic/*.h" "logic/*.cpp")
-source_group("logic"  FILES ${logic_src})
+#server 所有源文件
+file (GLOB_RECURSE all_src "*.h" "*.cpp")
 
+#logic 部分
+#logic_net
+file (GLOB_RECURSE logicnet_src "logic/logicnet/*.h" "logic/logicnet/*.cpp")
+source_group("logic\\logicnet"  FILES ${logicnet_src})
+
+#main 部分
 file (GLOB_RECURSE main_src "main/*.h" "main/*.cpp")
 source_group("main"  FILES ${main_src})
 
-add_executable(domi_srv ${main_SRCS})
+add_executable(domi_srv ${all_src})
 
-TARGET_LINK_LIBRARIES(domi_srv engine
-	${CMAKE_SOURCE_DIR}/Dependence/lib/libevent.lib
-	${CMAKE_SOURCE_DIR}/Dependence/lib/libprotobuf.lib
-)
+#lib
+file (GLOB_RECURSE dependence_lib "${CMAKE_SOURCE_DIR}/Dependence/lib/*.lib")
+set(LIBS engine)
+
+# Winsock.
+if(WIN32)
+    set(WIN_LIB  ws2_32.lib wsock32.lib)
+endif()
+
+list(APPEND LIBS ${dependence_lib} ${WIN_LIB})
+
+TARGET_LINK_LIBRARIES(domi_srv ${LIBS})
+
 #LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/DomiEngine/enginelib)

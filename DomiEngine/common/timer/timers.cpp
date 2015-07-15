@@ -64,7 +64,8 @@ bool CTimer::loop_break()
 
 bool CTimer::isInLoopThread()
 {
-	if (!m_thread.is_runing() || (m_thread.is_runing() && m_thread.getThreadID() == CThread::getCurrentThreadID()))
+	int64 curThreadId = CThread::getCurrentThreadID();
+	if (!m_thread.is_runing() || (m_thread.is_runing() && m_thread.getThreadID() == curThreadId))
 		return true;
 
 	return false;
@@ -226,6 +227,7 @@ uint32 CTimer::addTimer(TimerCallback cbFunc, uint64 _tick, uint32 count)
 	}
 	else
 	{
+		CLog::error(" ------------- 异步 addtimer ------------- ");
 		CCritLocker clLock(m_mutex);
 		m_pendingfunc_vec.push_back(std::bind(&CTimer::addTimerInLoop, this, cbFunc, _tick, count));
 
@@ -253,6 +255,7 @@ bool CTimer::delTimer(uint64 timerId)
 // bufferevent pair方式：void CTimer::on_wakeup(struct bufferevent* bev, void *arg);
 void CTimer::on_wakeup(struct bufferevent* bev, void *arg)
 {
+	printf("on_wakeup线程 %d\n", CThread::getCurrentThreadID());
 	CTimer* pTimer = (CTimer*)arg;
 	if (pTimer == nullptr)
 		return;
@@ -286,6 +289,7 @@ void CTimer::on_wakeup(struct bufferevent* bev, void *arg)
 // 超时事件的回调
 void CTimer::on_timeout(evutil_socket_t fd,short events,void * arg)
 {
+	//printf("on_timeout线程 %d\n", CThread::getCurrentThreadID());
 	//更新一次系统毫秒时间
 	setSystemTick64();
 	CTimerObject* pTimer = (CTimerObject*)arg;
@@ -329,7 +333,7 @@ void CTimer::on_timeout(evutil_socket_t fd,short events,void * arg)
 // timer线程
 THREAD_RETURN CTimer::_timer_thread_(void* _param)
 {
-	CLog::info("timer 线程启动……");
+	CLog::info("timer 线程启动,id = %d……",CThread::getCurrentThreadID());
 	CTimer* _this = (CTimer*)_param;
 	if(_this)
 		//event_base_loop(_this->m_event_base, EVLOOP_NO_EXIT_ON_EMPTY);
