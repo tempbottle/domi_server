@@ -16,7 +16,7 @@ void CNetClient::onDisconnect()
 	m_pPlayer->logout();
 	}*/
 	
-	printf("CNetClient::onDisconnect！\n");
+	//printf("CNetClient::onDisconnect！\n");
 	initialize();	// 清0，用来做复用
 }
 
@@ -26,4 +26,3 @@ void CNetClient::initialize()
 
 	// 其他的一些上层数据的清空
 }
-

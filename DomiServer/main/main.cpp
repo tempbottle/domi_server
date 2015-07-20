@@ -24,9 +24,5 @@ int main(int argc, char* argv[])
 		CServerRoot::messageBoxOK("启动服务失败", ":StartServices()启动服务失败!");
 
 	CDomiServer::GetSingleton().stopServices();
-
-	//::CloseHandle(g_hServerEvent);
-	CLog::shutdown();
-
 	return 0;
 }

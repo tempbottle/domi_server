@@ -33,7 +33,7 @@ public:
 		CNetClient* pClient = m_mapClient.find(_context);
 		if (pClient)
 		{
-			pClient->setApplyLock(true);
+			//pClient->setApplyLock(true);
 			return pClient;
 		}
 

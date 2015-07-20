@@ -8,6 +8,7 @@
 
 #pragma once
 #include "network/libevent.h"
+#include "network/net_message.h"
 #include "common/thread/csLocker.h"
 #include "tcp_context.h"
 
@@ -27,6 +28,7 @@ public:
 	// 回调
 	virtual void onConnect();		// 连接上的回调
 	virtual void onDisconnect();	// 断开连接
+	virtual void SendMsg(_stNetMessage* pOutMsg);
 
 public:
 	// 内联函数

@@ -20,11 +20,12 @@ public:
 public:
 	void ShowServerInfo();
 
-	bool CDomiServer::initialize(uint16 uServerID);	// 初始化server
-	bool CDomiServer::startServices();				// 启动server	
-	void CDomiServer::timerProcess();				// timer工作线程，逻辑在这里处理
-	void CDomiServer::stopServices();				// 关闭server
-	void CDomiServer::denyServices();				// 拒绝server
+	bool initialize(uint16 uServerID);	// 初始化server
+	bool startServices();				// 启动server	
+	void timerProcess();				// timer工作线程，逻辑在这里处理
+	bool canExitServices();				// 能否退出,这里做数据落地操作
+	void stopServices();				// 关闭server
+	void denyServices();				// 拒绝server
 
 public:
 	CNetServer m_netServer;		// 网络连接服务端

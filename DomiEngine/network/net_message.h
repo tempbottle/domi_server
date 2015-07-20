@@ -16,7 +16,7 @@ using namespace NetMessage;
 message NetMessage{
 	uint16 uProtocol = 1;	// 协议号
 	uint8 type = 2;			// 消息包类型，1=请求包（出去的包），2 = 返回包（进来的包）
-	optional bytes content = 3;	// 消息自己
+	optional bytes content = 3;	// 消息字节
 }
 */
 
@@ -26,7 +26,6 @@ struct _stNetMessage
 	uint32		 _apply_key;						//引用key
 	CTcpContext* _context;							//应用上下文
 	uint16		 m_size;							//数据大小
-	MessagePack  m_proto;							//protobuf
 	char		 m_buffer[MaxBuffLen];				//数据内容
 
 	_stNetMessage()
@@ -34,7 +33,6 @@ struct _stNetMessage
 		,_context(nullptr)
 		, m_size(0)
 	{
-		//printf("MessagePack = %d \n", sizeof(MessagePack));
 		//m_proto.Clear();
 	}
 
@@ -46,8 +44,6 @@ struct _stNetMessage
 		//m_proto.SerializeToArray(buffer, size);
 		memcpy(m_buffer,buffer,size);
 		m_size = size;
-		//printf("%s\n", buffer + 6);
-		//printf("context = %d\n", context->m_ContextId);
 	}
 };
 /*************************************************************/

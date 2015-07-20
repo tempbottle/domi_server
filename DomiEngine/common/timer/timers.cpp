@@ -35,7 +35,7 @@ CTimer::~CTimer()
 		event_base_free(m_event_base);
 }
 
-//-------------------------------------------------------------------
+//////////////////////////////////////////////////////////////////////////
 void CTimer::wakeUp()
 {
 	const char* pWakeUp = "wakeup";
@@ -47,7 +47,6 @@ void CTimer::wakeUp()
 		CLog::error("addTimer 唤醒失败……");
 }
 
-// 退出event loop 
 bool CTimer::loop_break()
 {
 	if (!m_shutdown)
@@ -85,8 +84,7 @@ void CTimer::addTimerInLoop(TimerCallback cbFunc, uint64 _tick, uint32 count)
 			_timeout.tv_usec = 100;
 
 		CTimerObject* pTimer = new CTimerObject(this, cbFunc, _tick, count);
-		if (!pTimer)
-		{
+		if (!pTimer){
 			CLog::error("timer对象构造错误.");
 			return;
 		}
@@ -113,8 +111,7 @@ void CTimer::delTimerInLoop(uint64 timerId)
 		return;
 
 	MAP_TIMEROBJ::iterator it = m_object_map.find(timerId);
-	if (it!=m_object_map.end())
-	{
+	if (it!=m_object_map.end()){
 		int32 _evnet = event_pending(&(it->second->m_ev_timeout), EV_ALL, nullptr);
 		if (_evnet & EV_TIMEOUT)	//拥有事件
 		event_del(&(it->second->m_ev_timeout));
@@ -124,8 +121,7 @@ void CTimer::delTimerInLoop(uint64 timerId)
 	m_object_map.erase(timerId);
 }
 
-//-------------------------------------------------------------------
-// 开启定时器 
+//////////////////////////////////////////////////////////////////////////
 bool CTimer::startTimer()
 {
 	if(!m_event_base)
@@ -157,12 +153,9 @@ bool CTimer::startTimer()
 		return false;
 	}
 
-	CLog::info("timer 线程 = %d", m_thread.getThreadID());
-
 	return true;
 }
 
-// 关闭定时器 
 void CTimer::stopTimer()
 {
 	m_shutdown = true;
@@ -182,7 +175,6 @@ void CTimer::stopTimer()
 	m_pendingfunc_vec.clear();
 }
 
-// 清除所有的定时器对象
 void CTimer::clearTimer()
 {
 	// 如果调用到此函数，说明 event_base 已经退出了loop，线程结束，此时线程安全
@@ -211,7 +203,6 @@ void CTimer::clearTimer()
 // 添加定时器
 uint32 CTimer::addTimer(TimerCallback cbFunc, uint64 _tick, uint32 count)
 {
-	CLog::error(" ------------- addTimer ------------- ");
 	if (cbFunc == nullptr)
 	{
 		CLog::error("回调函数未设置，无法添加到定时器.");
@@ -227,7 +218,6 @@ uint32 CTimer::addTimer(TimerCallback cbFunc, uint64 _tick, uint32 count)
 	}
 	else
 	{
-		CLog::error(" ------------- 异步 addtimer ------------- ");
 		CCritLocker clLock(m_mutex);
 		m_pendingfunc_vec.push_back(std::bind(&CTimer::addTimerInLoop, this, cbFunc, _tick, count));
 
@@ -255,14 +245,9 @@ bool CTimer::delTimer(uint64 timerId)
 // bufferevent pair方式：void CTimer::on_wakeup(struct bufferevent* bev, void *arg);
 void CTimer::on_wakeup(struct bufferevent* bev, void *arg)
 {
-	printf("on_wakeup线程 %d\n", CThread::getCurrentThreadID());
 	CTimer* pTimer = (CTimer*)arg;
 	if (pTimer == nullptr)
 		return;
-
-	char buf[10];
-	int len;
-
 	/*
 	if (EV_READ & events)
 		CLog::print("%s: WakeUp!", __FUNCTION__);
@@ -270,6 +255,8 @@ void CTimer::on_wakeup(struct bufferevent* bev, void *arg)
 	len = recv(fd, buf, sizeof(buf), 0);
 	*/
 
+	char buf[10];
+	int len;
 	len = bufferevent_read(bev, buf, sizeof(buf));
 	if (len>0)	// wakeup
 	{
@@ -333,12 +320,12 @@ void CTimer::on_timeout(evutil_socket_t fd,short events,void * arg)
 // timer线程
 THREAD_RETURN CTimer::_timer_thread_(void* _param)
 {
-	CLog::info("timer 线程启动,id = %d……",CThread::getCurrentThreadID());
+	CLog::info("[timer]线程启动,id = %d……",CThread::getCurrentThreadID());
 	CTimer* _this = (CTimer*)_param;
 	if(_this)
 		//event_base_loop(_this->m_event_base, EVLOOP_NO_EXIT_ON_EMPTY);
 		event_base_dispatch(_this->m_event_base);
 
-	CLog::error("timer 线程结束……");
+	CLog::info("[timer]线程结束……");
 	return 0;
 }

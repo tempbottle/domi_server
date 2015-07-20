@@ -53,7 +53,7 @@ CServerRoot::~CServerRoot()
 	stopServices();
 }
 
-//-------------------------------------------------------------------
+//////////////////////////////////////////////////////////////////////////
 // private
 // 事件初始化
 bool CServerRoot::initEvent()
@@ -108,7 +108,7 @@ bool CServerRoot::loadConfig()
 	return true;
 }
 
-//-------------------------------------------------------------------
+//////////////////////////////////////////////////////////////////////////
 // public
 // 设置服务器标题
 void CServerRoot::setServicesTitle(const char* pTitle, ...)
@@ -117,8 +117,7 @@ void CServerRoot::setServicesTitle(const char* pTitle, ...)
 		return;
 
 	char szTitle[256] = { 0 };
-	if (pTitle)
-	{
+	if (pTitle){
 		va_list	argptr;
 		va_start(argptr, pTitle);
 		dVsprintf(szTitle, sizeof(szTitle), pTitle, argptr);
@@ -130,13 +129,9 @@ void CServerRoot::setServicesTitle(const char* pTitle, ...)
 
 	tm	tmTime;
 	getLocalTime(&tmTime, &m_tmStartTime);
+	dSprintf(m_szTitle, sizeof(m_szTitle), "%s StartTime: %02d-%02d %02d:%02d:%02d", szTitle,tmTime.tm_mon, tmTime.tm_mday, tmTime.tm_hour, tmTime.tm_min, tmTime.tm_sec);
 
-	dSprintf(m_szTitle, sizeof(m_szTitle), "(V%d.%d.%d%.2d)%s StartTime: %02d-%02d %02d:%02d:%02d",
-		1, 0, 1, 0, szTitle,
-		tmTime.tm_mon, tmTime.tm_mday, tmTime.tm_hour, tmTime.tm_min, tmTime.tm_sec);
-
-	// 设置控制台标题
-#ifdef WIN32
+#ifdef WIN32 // 设置控制台标题
 	::SetConsoleTitle(m_szTitle);
 #endif
 }
@@ -153,7 +148,6 @@ void CServerRoot::showToConsole(const char* pFormat, ...)
 	va_end(argptr);
 
 	CConsoleColor clColor(_BIT32(CConsoleColor::color_green) | _BIT32(CConsoleColor::color_intensity));
-
 	dPrintf("%s\n", szStrint);
 }
 
@@ -175,23 +169,21 @@ bool CServerRoot::initialize(uint16 uServerID)
 	m_uServerID = uServerID;		// 设置服务器id
 
 	// load 服务器配置
-	if(!loadConfig())
-	{
+	if(!loadConfig()){
 		CLog::error("配置文件装载失败!...");
 		return false;
 	}
 	
 	installBreakHandlers();
 
-	if(!initEvent())
-	{
+	if(!initEvent()){
 		CLog::error("事件初始失败!...");
 		return false;
 	}
 
 	m_tmStartTime = getTime();
-
 	m_bInitFlag = true;
+
 	return true;
 }
 
@@ -230,8 +222,7 @@ void CServerRoot::maintenances()
 	while(!m_clMaintainEvent.wait_event(1000))
 	{
 		// 触发退出事件，server开始拒绝服务，并断开所有连接
-		if (m_clExitEvent.wait_event(0))
-		{
+		if (m_clExitEvent.wait_event(0)){
 			if (m_bExitServices)
 				CLog::warn("正在退出，请勿重复操作……");
 
@@ -242,8 +233,7 @@ void CServerRoot::maintenances()
 		}
 
 		//能否退出，每1s循环检查，是否已经退出完成
-		if (m_bExitServices)
-		{
+		if (m_bExitServices){
 			bool bCanExit = false;
 			{
 				CCritLocker clLock(getRootLock());
@@ -251,8 +241,7 @@ void CServerRoot::maintenances()
 					bCanExit = true;
 			}
 
-			if (bCanExit)
-			{
+			if (bCanExit){
 				m_clMaintainEvent.set_event();
 				CTimer::GetSingleton().stopTimer();
 				return;
@@ -261,8 +250,6 @@ void CServerRoot::maintenances()
 
 		/*处理控制台数据*/
 		/*处理控制台输入*/
-		// TODO
-		//CLog::print(__FUNCTION__);
 	}
 }
 
@@ -284,9 +271,9 @@ void CServerRoot::stopServices()
 // 拒绝服务
 void CServerRoot::denyServices()
 {
-	showToConsole("<Deny user login service ...>");
+	showToConsole("<[ServerRoot]Deny user login service ...>");
 
-	showToConsole("<Waiting for Queue process ...>");
+	showToConsole("<[ServerRoot]Waiting for Queue process ...>");
 }
 
 // 能否退出
@@ -310,7 +297,7 @@ bool CServerRoot::loadData()
 	return true;
 }
 
-//-------------------------------------------------------------------
+//////////////////////////////////////////////////////////////////////////
 // static
 // windows 的messagebox
 void CServerRoot::messageBoxOK(const char* pCaption,const char* pText,...)

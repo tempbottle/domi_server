@@ -25,6 +25,13 @@ void CTcpConnection::disconnect()
 		m_pContext->disconnect();
 }
 
+void CTcpConnection::SendMsg(_stNetMessage* pOutMsg)
+{
+	if (m_pContext){
+		m_pContext->send(pOutMsg->m_buffer, pOutMsg->m_size);
+	}
+}
+
 void CTcpConnection::onKickOut()
 {
 

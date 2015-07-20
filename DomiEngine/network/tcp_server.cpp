@@ -9,8 +9,9 @@
 #include "common/log/log.h"
 
 CTcpServer::CTcpServer()
-	: m_unWorkThreadNum(1)
+	: m_unWorkThreadNum(2)
 	, m_nextContextId(0)
+	, m_port(0)
 {
 #ifdef WIN32
 	WSADATA WSAData;
@@ -18,7 +19,7 @@ CTcpServer::CTcpServer()
 #endif
 
 	m_pListenerBase = nullptr;
-	nCurrentWorker = 0;
+	m_nCurrentWorker = 0;
 }
 
 CTcpServer::~CTcpServer()
@@ -26,33 +27,43 @@ CTcpServer::~CTcpServer()
 #ifdef WIN32
 	WSACleanup();
 #endif
+
+	m_nextContextId = 0;
 }
 
-void CTcpServer::SetTimeout(uint64 _timeout_connect,uint64 _timeout_read,uint64 _timeout_write)
+//////////////////////////////////////////////////////////////////////////
+bool CTcpServer::Initialize(uint32 threadNum, uint16 port)
 {
-	m_timeout_connect = _timeout_connect;
-	m_timeout_read = _timeout_read;
-	m_timeout_write = _timeout_write;
-}
-
-// 启动监听器
-bool CTcpServer::StarLister()
-{
-	m_pListenerBase = new_event_base();
-	if (m_pListenerBase == NULL)	// event_base 创建失败
-	{
-		CLog::error("[%s],tcp server eventbase 创建失败……", __FUNCTION__);
+	if (!threadNum){
+		CLog::error("[TcpServer],work线程数错误,threadNum=%d……", threadNum);
 		return false;
 	}
 
+	if (!port || port<10000){
+		CLog::error("[TcpServer],监听端口错误,port=%d……", port);
+		return false;
+	}
+
+	m_pListenerBase = new_event_base();
+	if (m_pListenerBase == NULL){// event_base 创建失败
+		CLog::error("[TcpServer],listen eventbase 创建失败……");
+		return false;
+	}
+
+	this->SetWorkThreadNum(threadNum);
+	this->SetListenPort(port);
+	return true;
+}
+
+bool CTcpServer::StarLister()
+{
 	struct sockaddr_in sin;
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
-	sin.sin_port = htons(17777);
+	sin.sin_port = htons(m_port);
 	m_pListener = evconnlistener_new_bind(m_pListenerBase, DoAccept, (void*)this, LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE, -1, (struct sockaddr*)&sin, sizeof(sin));
-	if (m_pListener == NULL)
-	{
-		CLog::error("[%s],tcp lister 创建失败……",__FUNCTION__);
+	if (m_pListener == NULL){
+		CLog::error("[TcpServer],tcp监听创建失败……");
 		return false;
 	}
 
@@ -60,9 +71,8 @@ bool CTcpServer::StarLister()
 	evconnlistener_set_error_cb(m_pListener, DoAcceptError);
 
 	// 监听线程
-	if (!m_clListenerThread.create(&CTcpServer::_listener_thread_, this))
-	{
-		CLog::error("[%s],tcp lister 线程创建失败……", __FUNCTION__);
+	if (!m_clListenerThread.create(&CTcpServer::_listener_thread_, this)){
+		CLog::error("[TcpServer],tcp监听线程创建失败……");
 		return false;
 	}
 
@@ -71,23 +81,19 @@ bool CTcpServer::StarLister()
 
 bool CTcpServer::StartServer()
 {
-	CLog::info("tcp server 开启……");
 	if (!StarLister())
 		return false;
 
 	CTcpThread* pWorkThread = nullptr;
-	// 初始化work线程
-	for (uint32 i=0;i<m_unWorkThreadNum;++i)
-	{
+	
+	for (uint32 i = 0; i<m_unWorkThreadNum; ++i){	// 初始化work线程
 		pWorkThread = new CTcpThread();	// new 加括号，表示显式调用构造函数，不带括号表示隐式调用构造函数
-		if (pWorkThread && pWorkThread->initialize(this))
-		{
+		if (pWorkThread && pWorkThread->initialize(this)){
 			m_vecWorkThread.push_back(pWorkThread);
 			pWorkThread->create(&CTcpServer::_working_thread_,pWorkThread);
 		}
-		else
-		{
-			CLog::error("[%s],第[%d]个工作线程创建失败……", __FUNCTION__,i+1);
+		else{
+			CLog::error("[TcpServer],第[%d]个工作线程创建失败……",i+1);
 		}
 	}
 
@@ -96,13 +102,12 @@ bool CTcpServer::StartServer()
 
 bool CTcpServer::StopServer()
 {
-	// 延时2s关闭
-	struct timeval delay = { 2, 0 };
+	// 延时2s关闭监听线程
+	timeval delay = { 2, 0 };
 	event_base_loopexit(this->m_pListenerBase, &delay);
 
-	// 工作base 延时2s
-	for (uint32 i = 0; i < m_vecWorkThread.size(); ++i)
-	{
+	// 延时2s关闭工作线程
+	for (uint32 i = 0; i < m_vecWorkThread.size(); ++i){
 		CTcpThread* pWork = m_vecWorkThread[i];
 		if (pWork)
 			event_base_loopexit(pWork->m_base, &delay);
@@ -112,29 +117,22 @@ bool CTcpServer::StopServer()
 	m_clListenerThread.wait_exit();	// 等待线程退出
 	evconnlistener_free(m_pListener);
 	event_base_free(m_pListenerBase);
-	CLog::info("[lister]线程关闭完成……");
 
 	// 关闭work线程
-	for (uint32 i=0;i<m_vecWorkThread.size();++i)
-	{
+	for (uint32 i=0;i<m_vecWorkThread.size();++i){
 		CTcpThread* pWork = m_vecWorkThread[i];
-		if (pWork)
-		{
+		if (pWork){
 			pWork->wait_exit();
 			delete pWork;
 		}
 	}
 	m_vecWorkThread.clear();
-	CLog::info("[work]线程关闭完成……");
 
 	return true;
 }
 
 void CTcpServer::CloseContext(CTcpContext *pContext)
 {
-	printf("info: 线程id = %d！\n", CTcpThread::getCurrentThreadID());
-	// 锁住context，防止tcpserver的DoRead线程进行buffer读取
-	//CCritLocker lock(pContext->m_csLock);
 	bufferevent_lock(pContext->m_bufev);
 	bufferevent_disable(pContext->m_bufev, EV_READ | EV_WRITE);
 	evutil_closesocket(pContext->m_fd);	// 断开bufferevent后，需要关闭套接字，否则会有问题
@@ -143,18 +141,17 @@ void CTcpServer::CloseContext(CTcpContext *pContext)
 
 	pContext->initialize();	// 复位
 
-	CCritLocker contextLocker(m_mapContext.getLock());
+	// 处理client连接断线逻辑
+	CCritLocker contextLocker(GetContextMapLock());
 	m_mapContext.release(pContext->m_ContextId);
 	this->OnDisConnect(pContext);
-	printf("info: CTcpServer::CloseContext！\n");
 }
 
-// 接收新连接的回调
+//////////////////////////////////////////////////////////////////////////
 void CTcpServer::OnConnect(CTcpContext* pContext)
 {
 	CTcpConnection* pConn = ConnectNew(pContext);
-	if (pConn == nullptr)
-	{
+	if (pConn == nullptr){
 		pContext->disconnect();
 		return;
 	}
@@ -162,14 +159,12 @@ void CTcpServer::OnConnect(CTcpContext* pContext)
 	pConn->onConnect();
 }
 
-// 断开连接回调
 void CTcpServer::OnDisConnect(CTcpContext* pContext)
 {
 	// 锁住连接map，找到对应的client
 	CCritLocker connLock(ConnectLock());
 	CTcpConnection* pConn = ConnectFind(pContext);
-	if (pConn)
-	{
+	if (pConn){
 		// 确保client连接不在timer线程中处理逻辑
 		CCritLocker clApplyLock(pConn->getApplyMutex());
 		pConn->onDisconnect();
@@ -178,48 +173,33 @@ void CTcpServer::OnDisConnect(CTcpContext* pContext)
 	ConnectDel(pContext);	// 回收客户端连接
 }
 
-// 写超时回调
-void CTcpServer::onTimeoutWrite(CTcpContext* pContext)
+void CTcpServer::OnTimeoutWrite(CTcpContext* pContext)
 {
 
 }
 
-// 读超时回调
-void CTcpServer::onTimeoutRead(CTcpContext* pContext)
+void CTcpServer::OnTimeoutRead(CTcpContext* pContext)
 {
 }
 
-// 解包
 bool CTcpServer::OnProcessPacket(CTcpContext* pContext)
 {
-	// 检查连接是否已经完好
-	// TODO
-
 	while (pContext->m_inbuf && pContext->getPendingLen() > sizeof(PacketHead))
 	{
 		//一个协议包的请求头还没读完，则继续循环读或者等待下一个libevent时间进行循环读
 		PacketHead* pHead = (PacketHead*)(pContext->m_inbuf + pContext->m_readBegin);
-
-		// 消息包头不合法
-		if (pHead->uPacketSize > MaxBuffLen || pHead->uPacketSize < sizeof(PacketHead))
-		{
-			//请求包不合法
+		if (pHead->uPacketSize > MaxBuffLen || pHead->uPacketSize < sizeof(PacketHead)){ // 消息包头不合法
 			pContext->disconnect();
 			return false;
 		}
 
-		// 剩余数据不够一个包，继续收
 		int len = pContext->getPendingLen();
-		if (pHead->uPacketSize > pContext->getPendingLen())
-		{
+		if (pHead->uPacketSize > pContext->getPendingLen()){ // 剩余数据不够一个包，继续收
 			printf("剩余数据不够一个包，继续收！\n");
 			break;
 		}
 
-		if (pContext->m_readBegin > pContext->m_inbufLen)
-		{
-			// 出问题了，已读的字节数居然大于总数，直接断掉连接
-			printf("出问题了，已读的字节数居然大于总数，直接断掉连接！\n");
+		if (pContext->m_readBegin > pContext->m_inbufLen){ // 出问题了，已读的字节数居然大于总数，直接断掉连接
 			this->CloseContext(pContext);
 			return false;
 		}
@@ -245,42 +225,37 @@ bool CTcpServer::OnProcessPacket(CTcpContext* pContext)
 	return true;
 }
 
-//-------------------------------------------------------------------
+//////////////////////////////////////////////////////////////////////////
 // static method
-// 接受新连接回调函数
 void CTcpServer::DoAccept(evconnlistener *listener, evutil_socket_t fd, sockaddr *sa, int socklen, void *user_data)
 {
-	CLog::info("tcp accept 线程id = [%d] ", CTcpThread::getCurrentThreadID());
-	if (fd <=0 )
-	{
-		printf("无效的socket！fd = [ %d] \n", fd);
+	//CLog::info("tcp accept 线程id = [%d] ", CTcpThread::getCurrentThreadID());
+	if (fd <=0 ){
+		CLog::error("[TcpServer],无效的socket fd = [%d]……", fd);
 		return;
 	}
 	
 	CTcpServer* pServer = (CTcpServer *)user_data;
-	int nCurrent = (pServer->nCurrentWorker++) % pServer->m_unWorkThreadNum;	//工作线程负载均衡
+	int nCurrent = (pServer->GetCurWorker()++) % pServer->GetWorkThreadNum();	//工作线程负载均衡
 	CTcpThread* pWorkThread = pServer->m_vecWorkThread[nCurrent];
 	
-	if (!pWorkThread)
-	{
-		printf("创建工作线程错误！\n");
+	if (!pWorkThread){
+		CLog::error("[TcpServer],创建工作线程错误……");
 		return;
 	}
 
 	CCritLocker contextLocker(pServer->GetContextMapLock());
 	CTcpContext* pContext = pServer->m_mapContext.allocate(pServer->m_nextContextId);
-	if (!pContext)
-	{
-		printf("context 分配错误！\n");
+	if (!pContext){
+		CLog::error("[TcpServer],context 分配错误……");
 		return;
 	}
 
 	// 创建一个bufferevent，绑定socket，并托管给event_base
 	// 注意，这里是托管给分配的工作线程的base，而不是监听线程的base
 	pContext->m_bufev=bufferevent_socket_new(pWorkThread->m_base,fd, BEV_OPT_CLOSE_ON_FREE|LEV_OPT_THREADSAFE);
-	if (pContext->m_bufev == NULL)
-	{
-		printf("创建eventbuffer失败！\n");
+	if (pContext->m_bufev == NULL){
+		CLog::error("[TcpServer],创建eventbuffer失败……");
 		return;
 	}
 
@@ -307,43 +282,45 @@ void CTcpServer::DoAccept(evconnlistener *listener, evutil_socket_t fd, sockaddr
 	//bufferevent_set_timeouts(pContext->m_bufev, /*&delayReadTimeout*/NULL, &delayWriteTimeout);
 	evutil_make_socket_nonblocking(fd);
 	bufferevent_enable(pContext->m_bufev, EV_READ | EV_WRITE);	// 调用event_add将读写事件加入到事件监听队列中
-	pContext->initContext(pServer, pWorkThread, fd, pServer->m_nextContextId);
-	++pServer->m_nextContextId;
+	pContext->initContext(pServer, pWorkThread, fd, ++pServer->m_nextContextId);
 
 	pServer->OnConnect(pContext);
 }
 
 void CTcpServer::DoRead(struct bufferevent* bev, void *ctx)
 {
-	printf("DoRead线程 %d\n", CThread::getCurrentThreadID());
 	struct evbuffer* input=bufferevent_get_input(bev);
 	if (evbuffer_get_length(input)) 
 	{
 		CTcpContext* pContext = reinterpret_cast<CTcpContext*>(ctx);
-		//CCritLocker lock(pContext->m_csLock);
+		if (!pContext){
+			CLog::error("[TcpServer],context不存在……");
+			return;
+		}
+
+		CTcpServer* pTcpServer = pContext->GetOwnedTcpServer();
+		if (!pTcpServer){
+			CLog::error("[TcpServer],tcpServer不存在……");
+			return;
+		}
+
 		int buffLen = evbuffer_get_length(input);	// evbuff 内的总字节数
 		while (buffLen>0)
 		{
 			int freeLen = pContext->getFreeLen();
-			if (freeLen<=0)
-			{
-				// 没有多余的空间,解包先
-				if (!pContext->processPacket())
-				{
-					CLog::error("解包错误，关闭链接……");
-					
+			if (freeLen<=0){ // 没有多余的空间,解包先
+				if (!pContext->processPacket()){
+					CLog::error("[TcpServer],解包错误，关闭链接……");
+					pTcpServer->CloseContext(pContext);
 					return;
 				}
 			}
-			else
-			{
+			else{
 				//bufferevent_read(bev, pContext->m_inbuf + pContext->m_readBegin, freeLen);
 				int ret = evbuffer_remove(input, pContext->m_inbuf + pContext->m_inbufLen, freeLen);
-				if (ret == -1)
-				{
-					// 读取错误
-					CLog::error("buffer 读取失败，关闭链接……");
-
+				if (ret == -1){ // 读取错误
+					CLog::error("[TcpServer],buffer 读取失败，关闭链接……");
+					pTcpServer->CloseContext(pContext);
 					return;
 				}
 
@@ -360,7 +337,6 @@ void CTcpServer::DoRead(struct bufferevent* bev, void *ctx)
 
 void CTcpServer::DoEvent(struct bufferevent *bev, short error, void *ctx)
 {
-	printf("DoEvent线程 %d\n", CThread::getCurrentThreadID());
 	CTcpContext* pContext = reinterpret_cast<CTcpContext*>(ctx);
 	if (!pContext)
 		return;
@@ -371,11 +347,11 @@ void CTcpServer::DoEvent(struct bufferevent *bev, short error, void *ctx)
 	}
 	else if (error&EVBUFFER_EOF)
 	{
-		printf("EVBUFFER_EOF! \n");
+		//printf("EVBUFFER_EOF! \n");
 	}
 	else if (error&EVBUFFER_ERROR)
 	{
-		printf("EVBUFFER_ERROR! \n");
+		//printf("EVBUFFER_ERROR! \n");
 	}
 
 	if (pContext)
@@ -387,7 +363,6 @@ void CTcpServer::DoAcceptError(evconnlistener *listener, void* ctx)
 	printf("监听错误回调! \n");
 }
 
-// 监听线程
 THREAD_RETURN CTcpServer::_listener_thread_(void* pParam)
 {
 	CTcpServer* pTcpServer=reinterpret_cast<CTcpServer*>(pParam);
@@ -400,7 +375,6 @@ THREAD_RETURN CTcpServer::_listener_thread_(void* pParam)
 	return ::GetCurrentThreadId();
 }
 
-// 工作线程
 THREAD_RETURN CTcpServer::_working_thread_(void* pParam)
 {
 	CTcpThread* pWorkThread=reinterpret_cast<CTcpThread*>(pParam);

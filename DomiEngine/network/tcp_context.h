@@ -27,9 +27,9 @@
 #include <errno.h>	//包含此文件就会设置errno变量【int geterror()】
 #include "tcp_thread.h"
 #include "libevent.h"
-#include "common/thread/csLocker.h"
 
-#define MaxBuffLen 1024*10	// 4k
+#define MaxBuffLen 1024*10			// 10k
+#define MaxBuffLenLimit 1024*20		// 20k
 
 //////////////////////////////////////////////////////////////////////////
 // 协议包头
@@ -53,32 +53,29 @@ public:
 	CTcpContext();
 	virtual ~CTcpContext(){}
 
-private:
+public:
+	inline int getPendingLen()				{ return m_inbufLen - m_readBegin; }	// 剩余未处理的字节数
+	inline int getFreeLen()					{ return MaxBuffLen - m_inbufLen; }		// 可以apend的长度
+	inline CTcpServer* GetOwnedTcpServer()	{ return m_clTcpServer; }				// 所在的tcpserver
+
 	void initialize();	// 初始化
 	void initContext(CTcpServer* _network, CTcpThread*_thread, evutil_socket_t fd, uint32 id = 0);
-	bool isInLoopThread();
-
-public:
-	bool	send(const char* pBuffer,int32 nSize);
-	void	disconnect();
-	bool	processPacket();
-
-	ulong	remote_address();		// 远程地址
-	const char*	remote_ip();		// 远程地址的ip
-
-	inline int getPendingLen() { return m_inbufLen - m_readBegin; }	// 剩余未处理的字节数
-	inline int getFreeLen()	{ return MaxBuffLen - m_inbufLen; }		// 可以apend的长度
+	bool send(const char* pBuffer,int32 nSize);
+	void disconnect();
+	bool processPacket();
+	ulong remote_address();		// 远程地址
+	const char*	remote_ip();	// 远程地址的ip
 
 public:
 	CTcpServer*	m_clTcpServer;		// 所属的server
 	CTcpThread*	m_clOwnerThread;	// 所属的线程
-	CMutex	m_csLock;
 
 	evutil_socket_t m_fd;			// socket fd
 	struct bufferevent* m_bufev;	// bufferevent 
 	uint32 m_ContextId;				// 连接索引
 
 	char m_inbuf[MaxBuffLen];		// buffer缓存，这里的缓存用来的分包
+	char m_outbuf[MaxBuffLen];		// buffer缓存，这里的缓存用组包
 	int m_inbufLen;					// inbuff 结束位置
 	int m_readBegin;				// 下一次开始读取的位置
 

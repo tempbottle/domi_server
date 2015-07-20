@@ -16,41 +16,16 @@
 
 class CServerRoot
 {
-	//-------------------------------------------------------------------
-	// member var
-public:/*Ctrl+C退出事件*/
-	static CCondEvent	m_clExitEvent;
+public:
+	CServerRoot();
+	virtual ~CServerRoot();
 
-private:
-	volatile bool m_bExitServices;	//退出变量(收到退出消息)
-	CCondEvent	m_clMaintainEvent;	//保持服务事件
-
-protected:
-	char		m_szEventExist[256];	// 全局事件名 windows系统有效
-	uint64		m_uPingTime;			// ping时间
-	bool		m_bInitFlag;			// server是否已经初始化完成
-	uint32		m_uLoadFlag;			//
-	uint64		m_tmStartTime;			// 启动时间
-	char		m_szTitle[256];			// 标题
-	uint8		m_uServerType;			// 服务器类型
-	uint16		m_uServerID;			// 服务器id
-
-#ifdef WIN32
-	static HANDLE m_hServerEvent;	// 全局事件句柄，windows下作唯一进程标示
-#endif
-
-	//-------------------------------------------------------------------
-	// method
 private:
 	bool initEvent();				// 初始化事件
 	void installBreakHandlers();	// 设置信号捕捉
 	virtual bool loadConfig();		// 从本地配置文件Config.ini读取数据
 
 public:
-	// 构造和析构
-	CServerRoot();
-	virtual ~CServerRoot();
-
 	// 获取服务器id等信息 inline
 	inline void		setServerType(uint8 uType)		{ m_uServerType = uType; }
 	inline uint8	getServerType()const			{ return m_uServerType; }
@@ -73,4 +48,25 @@ public:
 
 	// static
 	static void	messageBoxOK(const char* pCaption, const char* pText, ...);
+
+public:/*Ctrl+C退出事件*/
+	static CCondEvent	m_clExitEvent;
+
+private:
+	volatile bool m_bExitServices;	//退出变量(收到退出消息)
+	CCondEvent	m_clMaintainEvent;	//保持服务事件
+
+protected:
+	char		m_szEventExist[256];	// 全局事件名 windows系统有效
+	uint64		m_uPingTime;			// ping时间
+	bool		m_bInitFlag;			// server是否已经初始化完成
+	uint32		m_uLoadFlag;			// 读取配置完成标示
+	uint64		m_tmStartTime;			// 启动时间
+	char		m_szTitle[256];			// 标题
+	uint8		m_uServerType;			// 服务器类型
+	uint16		m_uServerID;			// 服务器id
+
+#ifdef WIN32
+	static HANDLE m_hServerEvent;	// 全局事件句柄，windows下作唯一进程标示
+#endif
 };
