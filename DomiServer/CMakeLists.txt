@@ -1,11 +1,11 @@
 #头文件目录
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/DomiEngine
 					${CMAKE_SOURCE_DIR}/DomiServer
-					${CMAKE_SOURCE_DIR}/Dependence/include/libevent
-					${CMAKE_SOURCE_DIR}/Dependence/include/libevent/include
-					${CMAKE_SOURCE_DIR}/Dependence/include/libevent/compat
-					${CMAKE_SOURCE_DIR}/Dependence/include/libevent/WIN32-Code
-					${CMAKE_SOURCE_DIR}/Dependence/include
+					${CMAKE_SOURCE_DIR}/3rd/include/libevent
+					${CMAKE_SOURCE_DIR}/3rd/include/libevent/include
+					${CMAKE_SOURCE_DIR}/3rd/include/libevent/compat
+					${CMAKE_SOURCE_DIR}/3rd/include/libevent/WIN32-Code
+					${CMAKE_SOURCE_DIR}/3rd/include
 )
 
 #message("------------------------- ${CMAKE_SOURCE_DIR} -------------------------")
@@ -44,7 +44,7 @@ source_group("main"  FILES ${main_src})
 add_executable(domi_srv ${all_src})
 
 #lib
-file (GLOB_RECURSE dependence_lib "${CMAKE_SOURCE_DIR}/Dependence/lib/*.lib")
+file (GLOB_RECURSE dependence_lib "${CMAKE_SOURCE_DIR}/3rd/lib/*.lib")
 set(LIBS engine)
 
 # Winsock.

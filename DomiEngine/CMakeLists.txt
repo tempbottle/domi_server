@@ -4,15 +4,15 @@ add_definitions(-D _SCL_SECURE_NO_WARNINGS)
 
 #头文件目录
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/DomiEngine
-					${CMAKE_SOURCE_DIR}/Dependence/include/libevent
-					${CMAKE_SOURCE_DIR}/Dependence/include/libevent/include
-					${CMAKE_SOURCE_DIR}/Dependence/include/libevent/compat
-					${CMAKE_SOURCE_DIR}/Dependence/include/libevent/WIN32-Code
-					${CMAKE_SOURCE_DIR}/Dependence/include
+					${CMAKE_SOURCE_DIR}/3rd/include/libevent
+					${CMAKE_SOURCE_DIR}/3rd/include/libevent/include
+					${CMAKE_SOURCE_DIR}/3rd/include/libevent/compat
+					${CMAKE_SOURCE_DIR}/3rd/include/libevent/WIN32-Code
+					${CMAKE_SOURCE_DIR}/3rd/include
 )
 
 #lib
-LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/Dependence/lib)
+LINK_DIRECTORIES(${CMAKE_SOURCE_DIR}/3rd/lib)
 
 IF(WIN32)
     IF(MSVC)
